@@ -162,31 +162,17 @@ plt.title('Distribution of Classes in Training Set')
 
 ## Step 2: Design and Test a Model Architecture
 
-Design and implement a deep learning model that learns to recognize traffic signs. Train and test your model on the [German Traffic Sign Dataset](http://benchmark.ini.rub.de/?section=gtsrb&subsection=dataset).
+### Why I chose this approach
 
-The LeNet-5 implementation shown in the [classroom](https://classroom.udacity.com/nanodegrees/nd013/parts/fbf77062-5703-404e-b60c-95b78b2f3f9e/modules/6df7ae49-c61c-4bb2-a23e-6527e69209ec/lessons/601ae704-1035-4287-8b11-e2c2716217ad/concepts/d4aca031-508f-4e0b-b493-e7b706120f81) at the end of the CNN lesson is a solid starting point. You'll have to change the number of classes and possibly the preprocessing, but aside from that it's plug and play! 
+The first 3 steps I took towards preprocessing were normalization of pixels, converting to grayscale, and shuffling the data. 
 
-With the LeNet-5 solution from the lecture, you should expect a validation set accuracy of about 0.89. To meet specifications, the validation set accuracy will need to be at least 0.93. It is possible to get an even higher accuracy, but 0.93 is the minimum for a successful project submission. 
+Normalization of pixels, as stated below, gives the data mean zero and equal variance which allows for a "generalized" view of the data for the model to process. 
 
-There are various aspects to consider when thinking about this problem:
+Grayscale gives similar benefits but for different reasons. The colors of traffic signs are often helpful to use as humans to recognize and classify traffic signs but to the neural network the color gives little benefit. The computional requirements for 3 channels can be reduced to 1 and then offset and applied to adding more output channels to the convolutional layers.
 
-- Neural network architecture (is the network over or underfitting?)
-- Play around preprocessing techniques (normalization, rgb to grayscale, etc)
-- Number of examples per label (some have more than others).
-- Generate fake data.
-
-Here is an example of a [published baseline model on this problem](http://yann.lecun.com/exdb/publis/pdf/sermanet-ijcnn-11.pdf). It's not required to be familiar with the approach used in the paper but, it's good practice to try to read papers like these.
+Shuffling the data is a simple but effective way to prevent the neural network from memorizing or learning based on the order of the traffic signs. Randomizing the order ensures this does not occur and gives better results when using the validation set, test set, and even future new data.
 
 ### Pre-process the Data Set (normalization, grayscale, etc.)
-
-Minimally, the image data should be normalized so that the data has mean zero and equal variance. For image data, `(pixel - 128)/ 128` is a quick way to approximately normalize the data and can be used in this project. 
-
-Other pre-processing steps are optional. You can try different techniques to see if it improves performance. 
-
-Use the code cell (or multiple code cells, if necessary) to implement the first step of your project.
-
-### Normalize data
-
 
 ```python
 import numpy as np
@@ -201,8 +187,9 @@ def normalize(array):
 
 ### Model Architecture
 
-#### Setting up Tensorflow
+For the batch size I went with the recommended batch size that we explored in the lessons leading up to the project, 128. I wasn't able to find any benefit from experimenting with 256 or 512 so I stuck with 128.
 
+I found 35 epochs to be a reasonable number of epochs. After 30 the model begins to fluctuate at an approximate plateau. Less than 30, combined with the learning rate of `0.001`, doesn't allow the model to reach its full potential for learning. 
 
 ```python
 import tensorflow as tf
@@ -221,6 +208,7 @@ X_train, y_train = shuffle(X_train, y_train)
 X_valid, y_valid = shuffle(X_valid, y_valid)
 ```
 
+Because I found grayscale to give significant benefits, I utilized the computional power recently saved to increase the overall number of output channels in the convolutional layers from `6 -> 12` and `16 -> 24`. The time to train was slightly longer than with initial data being in RGB, but the benefits were quite significant. It was able to push the model's accuracy from `~90%` to `~94%`.
 
 ```python
 mu = 0
@@ -251,6 +239,9 @@ def maxpool2d(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='VALID')
 ```
 
+Overall I stuck with the general LeNet Architecture, but I added dropout and another fully connected layer in response to the increase channel outputs of the convolutional layers. I added dropout only in the fully connected layers because when adding dropout to convolutional layers, the learning performance was significantly hampered even when experimenting with different learning rates.
+
+A dropout rate of `0.80` allowed for overfitting to be avoided while maintaining a strong learning rate and minimization of the loss function.
 
 ```python
 from tensorflow.contrib.layers import flatten
@@ -269,29 +260,26 @@ def LeNet(x):
     # TODO: Activation.
     conv1 = tf.nn.relu(conv1)
     
-    # TODO: Pooling. Input = 28x28x6. Output = 14x14x6.
     conv1 = maxpool2d(conv1)
 
-    # TODO: Layer 2: Convolutional. Output = 10x10x16.
     conv2 = conv2d(conv1, weights['conv_2'], biases['conv_2'])
     
     # TODO: Activation.
     conv2 = tf.nn.relu(conv2)
     
-    # TODO: Pooling. Input = 10x10x16. Output = 5x5x16.
     conv2 = maxpool2d(conv2)
 
-    # TODO: Flatten. Input = 5x5x16. Output = 400.
+    # TODO: Flatten. Input = 5x5x24. Output = 600.
     fc1 = flatten(conv2)
     
-    # TODO: Layer 3: Fully Connected. Input = 400. Output = 120.
+    # TODO: Layer 3: Fully Connected. Input = 600. Output = 200.
     fc1 = tf.add(tf.matmul(fc1, weights['fully_connected_1']), biases['fully_connected_1'])
     
     # TODO: Activation.
     fc1 = tf.nn.relu(fc1)
     fc1 = tf.nn.dropout(fc1, dropout)
 
-    # TODO: Layer 4: Fully Connected. Input = 120. Output = 84.
+    # TODO: Layer 4: Fully Connected. Input = 200. Output = 120.
     fc2 = tf.add(tf.matmul(fc1, weights['fully_connected_2']), biases['fully_connected_2'])
     
     # TODO: Activation.
@@ -305,7 +293,7 @@ def LeNet(x):
     fc3 = tf.nn.relu(fc3)
     fc3 = tf.nn.dropout(fc3, dropout)
 
-    # TODO: Layer 5: Fully Connected. Input = 84. Output = 10.
+    # TODO: Layer 5: Fully Connected. Input = 84. Output = 43.
     logits = tf.add(tf.matmul(fc3, weights['out']), biases['out'])
     
     return logits
@@ -501,9 +489,7 @@ with tf.Session() as sess:
 
 ## Step 3: Test a Model on New Images
 
-To give yourself more insight into how your model is working, download at least five pictures of German traffic signs from the web and use your model to predict the traffic sign type.
-
-You may find `signnames.csv` useful as it contains mappings from the class id (integer) to the actual sign name.
+When determing which traffic images to select, I ended up going with smaller images because when using cv2 to convert larger images to only `32x32` the resized image was clearly going to be trouble for the network. I also sought out ones with the sign reletively centered because the model doesn't handle the "finding" of the traffic signs, just the classification.
 
 ### Load and Output the Images
 
@@ -532,6 +518,7 @@ for i, t in enumerate(f_list):
 ### Predict and analyze performance
 
 
+
 ```python
 ### Run the predictions here and use the model to output the prediction for each image.### Run  
 ### Make sure to pre-process the images with the same pre-processing pipeline used earlier.
@@ -550,46 +537,13 @@ with tf.Session() as sess:
 
     New Images Test Accuracy = 0.833
 
+I found the new image accuracy to be about what I expected. The images certainly weren't perfect to begin with, particularly the construction ahead sign. Given a larger new test dataset I would imagine the accuracy would begin to trend closer towards the validation accuracy of `~94%` but be limited by the quality of the new test images in comparison to those used to train.
+
 
 ### Output Top 5 Softmax Probabilities For Each Image Found on the Web
 
 For each of the new images, print out the model's softmax probabilities to show the **certainty** of the model's predictions (limit the output to the top 5 probabilities for each image). [`tf.nn.top_k`](https://www.tensorflow.org/versions/r0.12/api_docs/python/nn.html#top_k) could prove helpful here. 
 
-The example below demonstrates how tf.nn.top_k can be used to find the top k predictions for each image.
-
-`tf.nn.top_k` will return the values and indices (class ids) of the top k predictions. So if k=3, for each sign, it'll return the 3 largest probabilities (out of a possible 43) and the correspoding class ids.
-
-Take this numpy array as an example. The values in the array represent predictions. The array contains softmax probabilities for five candidate images with six possible classes. `tf.nn.top_k` is used to choose the three classes with the highest probability:
-
-```
-# (5, 6) array
-a = np.array([[ 0.24879643,  0.07032244,  0.12641572,  0.34763842,  0.07893497,
-         0.12789202],
-       [ 0.28086119,  0.27569815,  0.08594638,  0.0178669 ,  0.18063401,
-         0.15899337],
-       [ 0.26076848,  0.23664738,  0.08020603,  0.07001922,  0.1134371 ,
-         0.23892179],
-       [ 0.11943333,  0.29198961,  0.02605103,  0.26234032,  0.1351348 ,
-         0.16505091],
-       [ 0.09561176,  0.34396535,  0.0643941 ,  0.16240774,  0.24206137,
-         0.09155967]])
-```
-
-Running it through `sess.run(tf.nn.top_k(tf.constant(a), k=3))` produces:
-
-```
-TopKV2(values=array([[ 0.34763842,  0.24879643,  0.12789202],
-       [ 0.28086119,  0.27569815,  0.18063401],
-       [ 0.26076848,  0.23892179,  0.23664738],
-       [ 0.29198961,  0.26234032,  0.16505091],
-       [ 0.34396535,  0.24206137,  0.16240774]]), indices=array([[3, 0, 5],
-       [0, 1, 4],
-       [0, 5, 1],
-       [1, 3, 5],
-       [1, 4, 3]], dtype=int32))
-```
-
-Looking just at the first row we get `[ 0.34763842,  0.24879643,  0.12789202]`, you can confirm these are the 3 largest probabilities in `a`. You'll also notice `[3, 0, 5]` are the corresponding indices.
 
 
 ```python
@@ -620,7 +574,9 @@ with tf.Session() as sess:
         7.91955113e-11]
      [  9.67653453e-01   3.12046446e-02   1.13936176e-03   2.08746565e-06
         2.93787082e-07]]
+        
 
+Given these results, it seems as though the model is quite confident itself, particularly the first 3 which had a `100%` confidence rating. 
 
 ### Project Writeup
 
