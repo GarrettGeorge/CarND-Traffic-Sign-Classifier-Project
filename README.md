@@ -129,6 +129,8 @@ print(y_train[index])
 
 
 ```python
+# Taken from https://github.com/harveenchadha/Udacity-CarND-Traffic-Sign-Classifier
+
 import matplotlib.pyplot as plt
 import numpy as np
 # Visualizations will be shown in the notebook.
@@ -591,11 +593,12 @@ Looking just at the first row we get `[ 0.34763842,  0.24879643,  0.12789202]`, 
 
 
 ```python
+# Taken from https://github.com/harveenchadha/Udacity-CarND-Traffic-Sign-Classifier
+
 ### Print out the top five softmax probabilities for the predictions on the German traffic sign images found on the web. 
 ### Feel free to use as many code cells as needed.
 softmax_logits = tf.nn.softmax(logits)
 top_k = tf.nn.top_k(softmax_logits, k=5)
-
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
